@@ -33,34 +33,37 @@ class Trainer(BaseTrainer):
         metric_funcs = self.metrics["inference"]
         if self.is_train:
             metric_funcs = self.metrics["train"]
-            self.optimizer_d.zero_grad()
-            self.optimizer_g.zero_grad()
 
         generated = self.generator(**batch)  # generated_audio and generated_spectrogram
-        batch.update(generated)
-
-        mpd_res = self.mpd(**batch)
-        batch.update(mpd_res)
-        loss_mpd = self.dicriminator_loss(mpd=True, **batch)["disc_loss"]
-        batch.update(loss_mpd)
-        msd_res = self.msd(**batch)
-        batch.update(msd_res)
-        loss_msd = self.dicriminator_loss(mpd=False, **batch)["disc_loss"]
-        batch.update(loss_msd)
+        gen_audio = generated["generated_audio"]
+        mpd_res = self.mpd(generated_audio=gen_audio.detach(), **batch)
+        loss_mpd = self.dicriminator_loss(mpd_res, mpd=True)
+        msd_res = self.msd(generated_audio=gen_audio.detach(), **batch)
+        loss_msd = self.dicriminator_loss(msd_res, mpd=False, **batch)
         loss_disc = loss_mpd + loss_msd
         if self.is_train:
+            self.optimizer_d.zero_grad()
             loss_disc.backward()
             self.optimizer_d.step()
+        for loss in loss_msd:
+            loss_msd[loss] = loss_msd[loss].detach().cpu().item()
+        batch.update(loss_msd)
+        for loss in loss_mpd:
+            loss_mpd[loss] = loss_mpd[loss].detach().cpu().item()
+        batch.update(loss_mpd)
+        msd_res = self.msd(generated_audio=gen_audio, **batch)
+        mpd_res = self.mpd(generated_audio=gen_audio, **batch)
+        total_res = {}
+        total_res.update(mpd_res)
+        total_res.update(msd_res)
+        total_res.update(generated)
+        for k in generated:
+            batch[k] = generated[k].detach()
 
-        mpd_res = self.mpd(**batch)
-        batch.update(mpd_res)
-        msd_res = self.msd(**batch)
-        batch.update(msd_res)
-
-        loss_gen = self.generator_loss(**batch)
-        batch.update(loss_gen)
+        loss_gen = self.generator_loss(**total_res)
 
         if self.is_train:
+            self.optimizer_g.zero_grad()
             loss_gen["gen_loss"].backward()
             self.optimizer_g.step()
             self._clip_grad_norm()
@@ -68,6 +71,10 @@ class Trainer(BaseTrainer):
                 self.lr_scheduler_d.step()
             if self.lr_scheduler_g is not None:
                 self.lr_scheduler_g.step()
+
+        for loss in loss_gen:
+            loss_gen[loss] = loss_gen[loss].detach().cpu().item()
+        batch.update(loss_gen)
 
         # update metrics for each loss (in case of multiple losses)
         for loss_name in self.config.writer.loss_names:

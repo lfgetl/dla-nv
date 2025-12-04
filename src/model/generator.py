@@ -107,7 +107,7 @@ class Generator(nn.Module):
                 )
             )
 
-        self.mrfs = []
+        self.mrfs = nn.ModuleList([])
         for i in range(len(k_u)):
             ml = nn.ModuleList([])
             channels = hidden_size // (2 ** (i + 1))

@@ -545,8 +545,8 @@ class BaseTrainer:
 
         # load optimizer state from checkpoint only when optimizer type is not changed.
         if (
-            checkpoint["config"]["optimizer"] != self.config["optimizer"]
-            or checkpoint["config"]["lr_scheduler"] != self.config["lr_scheduler"]
+            checkpoint["config"]["optimizer_g"] != self.config["optimizer_g"]
+            or checkpoint["config"]["lr_scheduler_g"] != self.config["lr_scheduler_g"]
         ):
             self.logger.warning(
                 "Warning: Optimizer or lr_scheduler given in the config file is different "
@@ -581,7 +581,9 @@ class BaseTrainer:
             print(f"Loading model weights from: {pretrained_path} ...")
         checkpoint = torch.load(pretrained_path, self.device)
 
-        if checkpoint.get("state_dict") is not None:
-            self.model.load_state_dict(checkpoint["state_dict"])
+        if checkpoint.get("state_dict_g") is not None:
+            self.generator.load_state_dict(checkpoint["state_dict_g"])
+            self.mpd.load_state_dict(checkpoint["state_dict_mpd"])
+            self.msd.load_state_dict(checkpoint["state_dict_msd"])
         else:
             self.model.load_state_dict(checkpoint)
