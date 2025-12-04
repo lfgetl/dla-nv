@@ -6,7 +6,7 @@ import torch
 import torchaudio
 from torch.utils.data import Dataset
 
-from src.model.mel_spectrogram import MelSpectrogram
+from src.model.mel_spectrogram import MelSpectrogram, MelSpectrogramConfig
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,8 @@ class BaseDataset(Dataset):
 
         index = self._shuffle_and_limit_index(index, limit, shuffle_index)
         self._index: List[dict] = index
-        self.mel_spectrogram = MelSpectrogram()
+        self.mel_spectrogram = MelSpectrogram(MelSpectrogramConfig())
+        self.target_sr = MelSpectrogramConfig().sr
 
         self.instance_transforms = instance_transforms
 
@@ -62,9 +63,9 @@ class BaseDataset(Dataset):
         data_dict = self._index[ind]
         (
             file_id,
+            audio_path,
             text,
             normalized_text,
-            audio_path,
         ) = data_dict.values()
         target_audio = self.load_audio(audio_path)
 
@@ -165,13 +166,10 @@ class BaseDataset(Dataset):
                 such as label and object path.
         """
         for entry in index:
-            assert "path" in entry, (
+            assert "audio_path" in entry, (
                 "Each dataset item should include field 'path'" " - path to audio file."
             )
-            assert "label" in entry, (
-                "Each dataset item should include field 'label'"
-                " - object ground-truth label."
-            )
+            assert "text" in entry, "Each dataset item should include field 'text'"
 
     @staticmethod
     def _sort_index(index):

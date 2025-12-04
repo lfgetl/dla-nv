@@ -87,7 +87,7 @@ class GeneratorLoss(nn.Module):
 
 class DiscriminatorLoss(nn.Module):
     def __init__(self):
-        super().__init()
+        super().__init__()
 
     def forward(self, mpd: bool, **batch):
         if mpd:

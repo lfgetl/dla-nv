@@ -17,7 +17,9 @@ class BaseTrainer:
 
     def __init__(
         self,
-        model,
+        generator,
+        msd,
+        mpd,
         generator_loss,
         discriminator_loss,
         metrics,
@@ -69,7 +71,9 @@ class BaseTrainer:
         self.logger = logger
         self.log_step = config.trainer.get("log_step", 50)
 
-        self.model = model
+        self.generator = generator
+        self.msd = msd
+        self.mpd = mpd
         self.generator_loss = generator_loss
         self.dicriminator_loss = discriminator_loss
         self.optimizer_d = optimizer_d
@@ -204,7 +208,9 @@ class BaseTrainer:
                 this epoch.
         """
         self.is_train = True
-        self.model.train()
+        self.generator.train()
+        self.msd.train()
+        self.mpd.train()
         self.train_metrics.reset()
         self.writer.set_step((epoch - 1) * self.epoch_len)
         self.writer.add_scalar("epoch", epoch)
@@ -268,7 +274,9 @@ class BaseTrainer:
             logs (dict): logs that contain the information about evaluation.
         """
         self.is_train = False
-        self.model.eval()
+        self.generator.eval()
+        self.mpd.eval()
+        self.msd.eval()
         self.evaluation_metrics.reset()
         with torch.no_grad():
             for batch_idx, batch in tqdm(
@@ -352,7 +360,8 @@ class BaseTrainer:
                 the dataloader with some of the tensors on the device.
         """
         for tensor_for_device in self.cfg_trainer.device_tensors:
-            batch[tensor_for_device] = batch[tensor_for_device].to(self.device)
+            if tensor_for_device in batch:
+                batch[tensor_for_device] = batch[tensor_for_device].to(self.device)
         return batch
 
     def transform_batch(self, batch):
@@ -483,9 +492,13 @@ class BaseTrainer:
         state = {
             "arch": arch,
             "epoch": epoch,
-            "state_dict": self.model.state_dict(),
-            "optimizer": self.optimizer.state_dict(),
-            "lr_scheduler": self.lr_scheduler.state_dict(),
+            "state_dict_g": self.generator.state_dict(),
+            "state_dict_mpd": self.mpd.state_dict(),
+            "state_dict_msd": self.msd.state_dict(),
+            "optimizer_d": self.optimizer_d.state_dict(),
+            "optimizer_g": self.optimizer_g.state_dict(),
+            "lr_scheduler_d": self.lr_scheduler_d.state_dict(),
+            "lr_scheduler_g": self.lr_scheduler_g.state_dict(),
             "monitor_best": self.mnt_best,
             "config": self.config,
         }
@@ -521,12 +534,14 @@ class BaseTrainer:
         self.mnt_best = checkpoint["monitor_best"]
 
         # load architecture params from checkpoint.
-        if checkpoint["config"]["model"] != self.config["model"]:
-            self.logger.warning(
-                "Warning: Architecture configuration given in the config file is different from that "
-                "of the checkpoint. This may yield an exception when state_dict is loaded."
-            )
-        self.model.load_state_dict(checkpoint["state_dict"])
+        # if checkpoint["config"]["model"] != self.config["model"]:
+        #    self.logger.warning(
+        #        "Warning: Architecture configuration given in the config file is different from that "
+        #         "of the checkpoint. This may yield an exception when state_dict is loaded."
+        #    )
+        self.generator.load_state_dict(checkpoint["state_dict_g"])
+        self.mpd.load_state_dict(checkpoint["state_dict_mpd"])
+        self.msd.load_state_dict(checkpoint["state_dcit_msd"])
 
         # load optimizer state from checkpoint only when optimizer type is not changed.
         if (
@@ -539,8 +554,10 @@ class BaseTrainer:
                 "are not resumed."
             )
         else:
-            self.optimizer.load_state_dict(checkpoint["optimizer"])
-            self.lr_scheduler.load_state_dict(checkpoint["lr_scheduler"])
+            self.optimizer_d.load_state_dict(checkpoint["optimizer_d"])
+            self.lr_scheduler_d.load_state_dict(checkpoint["lr_scheduler_d"])
+            self.optimizer_g.load_state_dict(checkpoint["optimizer_g"])
+            self.lr_scheduler_g.load_state_dict(checkpoint["lr_scheduler_g"])
 
         self.logger.info(
             f"Checkpoint loaded. Resume training from epoch {self.start_epoch}"

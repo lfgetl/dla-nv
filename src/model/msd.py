@@ -68,7 +68,7 @@ class SubMSD(nn.Module):
         )
 
     def forward(self, audio):
-        x = audio.copy()
+        x = audio.unsqueeze(1)
         features = []
         for layer in self.convs:
             x = self.relu(layer(x))
@@ -102,7 +102,7 @@ class MSD(nn.Module):
 
     def forward(self, generated_audio, target_audio, **batch):
         res = {
-            "msd_outputes_gen": [],
+            "msd_outputs_gen": [],
             "msd_outputs_real": [],
             "features_msd_gen": [],
             "features_msd_real": [],

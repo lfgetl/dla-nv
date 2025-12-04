@@ -23,8 +23,9 @@ def collate_fn(dataset_items: list[dict]):
         )
         result_batch["spectrogram"] = result_batch["spectrogram"].permute(0, 2, 1)
     if "target_audio" in dataset_items[0]:
-        result_batch["target_audio"] = torch.stack(
-            [elem["target_audio"].squeeze(0) for elem in dataset_items]
+        result_batch["target_audio"] = pad_sequence(
+            [elem["target_audio"].squeeze(0) for elem in dataset_items],
+            batch_first=True,
         )
     for field in ["file_id", "normalized_text"]:  # keep the text for some future reason
         result_batch[field] = [elem[field] for elem in dataset_items]

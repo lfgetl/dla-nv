@@ -38,11 +38,11 @@ class NVDataset(BaseDataset):
         read_path = dir_part / (part + ".csv")
         dir_audio = dir_part / "wavs"
 
-        with open(read_path, "r", delimeter="|", newline="") as file:
-            reader = csv.reader(file)
+        with open(read_path, "r", newline="") as file:
+            reader = csv.reader(file, delimiter="|", quoting=csv.QUOTE_NONE)
             for row in tqdm(reader):
                 id, text, normalized_text = row
-                audio_path = dir_audio / (id + ".wav")
+                audio_path = str(dir_audio / (id + ".wav"))
 
                 index.append(
                     {

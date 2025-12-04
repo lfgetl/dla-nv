@@ -76,8 +76,8 @@ class SubMPD(nn.Module):
 
     def forward(self, audio):
         features = []
-        x = audio.copy()
-        b, c, t = audio.shape
+        x = audio.unsqueeze(1)
+        b, c, t = x.shape
         if t % self.p != 0:
             n_pad = self.p - (t % self.p)
             t += n_pad
@@ -94,11 +94,12 @@ class SubMPD(nn.Module):
 
 class MPD(nn.Module):
     def __init__(self, relu_slope, ps):
+        super().__init__()
         self.discs = nn.ModuleList([SubMPD(p, relu_slope) for p in ps])
 
     def forward(self, generated_audio, target_audio, **batch):
         res = {
-            "mpd_outputes_gen": [],
+            "mpd_outputs_gen": [],
             "mpd_outputs_real": [],
             "features_mpd_gen": [],
             "features_mpd_real": [],

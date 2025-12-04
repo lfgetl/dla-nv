@@ -9,7 +9,7 @@ def pad_size(kernel_size, dilation):
     return dilation * (kernel_size - 1) // 2
 
 
-class MRF(nn.module):
+class MRF(nn.Module):
     def __init__(self, hidden_size, kernel_size, dilations, relu):
         super().__init__()
         self.convs1 = nn.ModuleList(
@@ -89,7 +89,7 @@ class Generator(nn.Module):
         self.k_r = k_r
         self.dilations = dilations
         self.relu = nn.LeakyReLU(relu_slope)
-        self.mel = MelSpectrogram()
+        self.mel = MelSpectrogram(MelSpectrogramConfig())
 
         self.first_conv = nn.Conv1d(
             in_channels=in_channels, out_channels=hidden_size, kernel_size=7, padding=3
@@ -98,7 +98,7 @@ class Generator(nn.Module):
         self.convT = nn.ModuleList([])
         for i, l in enumerate(k_u):
             self.convT.append(
-                nn.Conv1dTranspose(
+                nn.ConvTranspose1d(
                     in_channels=hidden_size // (2**i),
                     out_channels=hidden_size // (2 ** (i + 1)),
                     kernel_size=l,
@@ -111,8 +111,8 @@ class Generator(nn.Module):
         for i in range(len(k_u)):
             ml = nn.ModuleList([])
             channels = hidden_size // (2 ** (i + 1))
-            for kernel_size, dilation in zip(k_r, dilations):
-                ml.append(MRF(channels, kernel_size, dilation, relu_slope))
+            for kernel_size in k_r:
+                ml.append(MRF(channels, kernel_size, dilations, relu_slope))
             self.mrfs.append(ml)
 
         self.conv_end = nn.Conv1d(
@@ -135,7 +135,7 @@ class Generator(nn.Module):
                 res += mrf(x)
         x /= len(self.k_u)
         x = torch.tanh(self.conv_end(self.relu(x)))
-        return {"generated_audio": x, "generated_spectrogram": self.mel(x)}
+        return {"generated_audio": x.squeeze(1), "generated_spectrogram": self.mel(x)}
 
     def __str__(self):
         """
