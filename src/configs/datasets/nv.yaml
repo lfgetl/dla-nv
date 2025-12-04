@@ -1,0 +1,4 @@
+train:
+  _target_: src.datasets.NVDataset
+  part: "train"
+  instance_transforms: ${transforms.instance_transforms.train}

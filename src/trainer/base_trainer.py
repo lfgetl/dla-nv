@@ -18,10 +18,13 @@ class BaseTrainer:
     def __init__(
         self,
         model,
-        criterion,
+        generator_loss,
+        discriminator_loss,
         metrics,
-        optimizer,
-        lr_scheduler,
+        optimizer_g,
+        optimizer_d,
+        lr_scheduler_g,
+        lr_scheduler_d,
         config,
         device,
         dataloaders,
@@ -67,9 +70,12 @@ class BaseTrainer:
         self.log_step = config.trainer.get("log_step", 50)
 
         self.model = model
-        self.criterion = criterion
-        self.optimizer = optimizer
-        self.lr_scheduler = lr_scheduler
+        self.generator_loss = generator_loss
+        self.dicriminator_loss = discriminator_loss
+        self.optimizer_d = optimizer_d
+        self.lr_scheduler_d = lr_scheduler_d
+        self.optimizer_g = optimizer_g
+        self.lr_scheduler_g = lr_scheduler_g
         self.batch_transforms = batch_transforms
 
         # define dataloaders
@@ -217,8 +223,9 @@ class BaseTrainer:
                     continue
                 else:
                     raise e
+            grad_norms = self._get_grad_norm()
 
-            self.train_metrics.update("grad_norm", self._get_grad_norm())
+            self.train_metrics.update(grad_norms)
 
             # log current results
             if batch_idx % self.log_step == 0:
@@ -378,7 +385,9 @@ class BaseTrainer:
         Clips the gradient norm by the value defined in
         config.trainer.max_grad_norm
         """
-        if self.config["trainer"].get("max_grad_norm", None) is not None:
+        if (
+            self.config["trainer"].get("max_grad_norm", None) is not None
+        ):  # это не будет работать, но я и не делаю клип
             clip_grad_norm_(
                 self.model.parameters(), self.config["trainer"]["max_grad_norm"]
             )
@@ -393,15 +402,23 @@ class BaseTrainer:
         Returns:
             total_norm (float): the calculated norm.
         """
-        parameters = self.model.parameters()
-        if isinstance(parameters, torch.Tensor):
-            parameters = [parameters]
-        parameters = [p for p in parameters if p.grad is not None]
-        total_norm = torch.norm(
-            torch.stack([torch.norm(p.grad.detach(), norm_type) for p in parameters]),
-            norm_type,
-        )
-        return total_norm.item()
+        total_norms = {}
+        for name, model in zip(
+            ["grad_norm_generator", "grad_norm_mpd, grad_norm_msd"],
+            [self.generator, self.mpd, self.msd],
+        ):
+            parameters = model.parameters()
+            if isinstance(parameters, torch.Tensor):
+                parameters = [parameters]
+            parameters = [p for p in parameters if p.grad is not None]
+            total_norm = torch.norm(
+                torch.stack(
+                    [torch.norm(p.grad.detach(), norm_type) for p in parameters]
+                ),
+                norm_type,
+            )
+            total_norms[name] = total_norm.item()
+        return total_norms
 
     def _progress(self, batch_idx):
         """

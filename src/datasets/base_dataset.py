@@ -3,7 +3,10 @@ import random
 from typing import List
 
 import torch
+import torchaudio
 from torch.utils.data import Dataset
+
+from src.model.mel_spectrogram import MelSpectrogram
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +40,7 @@ class BaseDataset(Dataset):
 
         index = self._shuffle_and_limit_index(index, limit, shuffle_index)
         self._index: List[dict] = index
+        self.mel_spectrogram = MelSpectrogram()
 
         self.instance_transforms = instance_transforms
 
@@ -56,11 +60,20 @@ class BaseDataset(Dataset):
                 (a single dataset element).
         """
         data_dict = self._index[ind]
-        data_path = data_dict["path"]
-        data_object = self.load_object(data_path)
-        data_label = data_dict["label"]
+        (
+            file_id,
+            text,
+            normalized_text,
+            audio_path,
+        ) = data_dict.values()
+        target_audio = self.load_audio(audio_path)
 
-        instance_data = {"data_object": data_object, "labels": data_label}
+        instance_data = {
+            "target_audio": target_audio,
+            "text": text,
+            "normalized_text": normalized_text,
+            "file_id": file_id,
+        }
         instance_data = self.preprocess_data(instance_data)
 
         return instance_data
@@ -71,17 +84,25 @@ class BaseDataset(Dataset):
         """
         return len(self._index)
 
-    def load_object(self, path):
+    def load_audio(self, path):
+        audio_tensor, sr = torchaudio.load(path)
+        audio_tensor = audio_tensor[0:1, :]  # remove all channels but the first
+        target_sr = self.target_sr
+        if sr != target_sr:
+            audio_tensor = torchaudio.functional.resample(audio_tensor, sr, target_sr)
+        return audio_tensor
+
+    def get_spectrogram(self, audio):
         """
-        Load object from disk.
+        Special instance transform with a special key to
+        get spectrogram from audio.
 
         Args:
-            path (str): path to the object.
+            audio (Tensor): original audio.
         Returns:
-            data_object (Tensor):
+            spectrogram (Tensor): complex spectrogram for the audio.
         """
-        data_object = torch.load(path)
-        return data_object
+        return self.mel_spectrogram(audio)
 
     def preprocess_data(self, instance_data):
         """
@@ -99,9 +120,14 @@ class BaseDataset(Dataset):
         """
         if self.instance_transforms is not None:
             for transform_name in self.instance_transforms.keys():
-                instance_data[transform_name] = self.instance_transforms[
-                    transform_name
-                ](instance_data[transform_name])
+                if transform_name == "get_spectrogram":
+                    instance_data["spectrogram"] = self.get_spectrogram(
+                        instance_data["target_audio"]
+                    )
+                if transform_name == "audio":
+                    instance_data["target_audio"] = self.instance_transforms["audio"](
+                        instance_data["target_audio"]
+                    )
         return instance_data
 
     @staticmethod

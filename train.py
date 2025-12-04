@@ -1,3 +1,4 @@
+import itertools
 import warnings
 
 import hydra
@@ -41,14 +42,21 @@ def main(config):
     model = instantiate(config.model).to(device)
     logger.info(model)
 
-    # get function handles of loss and metrics
-    loss_function = instantiate(config.loss_function).to(device)
+    # get function handles of loss and metric
+    generator_loss = instantiate(config.gen_loss_function).to(device)
+    discriminator_loss = instantiate(config.dis_loss_function).to(device)
     metrics = instantiate(config.metrics)
 
     # build optimizer, learning rate scheduler
-    trainable_params = filter(lambda p: p.requires_grad, model.parameters())
-    optimizer = instantiate(config.optimizer, params=trainable_params)
-    lr_scheduler = instantiate(config.lr_scheduler, optimizer=optimizer)
+    trainable_params_g = filter(lambda p: p.requires_grad, model.generator.parameters())
+    trainable_params_d = filter(
+        lambda p: p.requires_grad,
+        itertools.chain([model.mpd.parameters(), model.msd.parameters()]),
+    )
+    optimizer_g = instantiate(config.optimizer_g, params=trainable_params_g)
+    optimizer_d = instantiate(config.optimizer_d, params=trainable_params_d)
+    lr_scheduler_g = instantiate(config.lr_scheduler_g, optimizer=optimizer_g)
+    lr_scheduler_d = instantiate(config.lr_scheduler_d, optimizer=optimizer_d)
 
     # epoch_len = number of iterations for iteration-based training
     # epoch_len = None or len(dataloader) for epoch-based training
@@ -56,10 +64,13 @@ def main(config):
 
     trainer = Trainer(
         model=model,
-        criterion=loss_function,
+        generator_loss=generator_loss,
+        discriminator_loss=discriminator_loss,
         metrics=metrics,
-        optimizer=optimizer,
-        lr_scheduler=lr_scheduler,
+        optimizer_g=optimizer_g,
+        optimizer_d=optimizer_d,
+        lr_scheduler_g=lr_scheduler_g,
+        lr_scheduler_d=lr_scheduler_d,
         config=config,
         device=device,
         dataloaders=dataloaders,

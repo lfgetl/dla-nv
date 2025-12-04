@@ -1,0 +1,5 @@
+train:
+  _target_: src.datasets.ExampleDataset
+  part: "train"
+  limit: 16
+  instance_transforms: ${transforms.instance_transforms.train}
