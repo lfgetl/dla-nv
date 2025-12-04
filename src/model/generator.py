@@ -67,9 +67,9 @@ class MRF(nn.Module):
     def forward(self, x):
         for conv1, conv2 in zip(self.convs1, self.convs2):
             dx = self.relu(x)
-            dx = conv1(x)
-            dx = self.relu(x)
-            dx = conv2(x)
+            dx = conv1(dx)
+            dx = self.relu(dx)
+            dx = conv2(dx)
             x += dx
         return x
 
