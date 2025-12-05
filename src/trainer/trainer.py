@@ -27,7 +27,7 @@ class Trainer(BaseTrainer):
                 the dataloader (possibly transformed via batch transform),
                 model outputs, and losses.
         """
-         batch = self.move_batch_to_device(batch)
+        batch = self.move_batch_to_device(batch)
         batch = self.transform_batch(batch)  # transform batch on device -- faster
 
         metric_funcs = self.metrics["inference"]
@@ -35,7 +35,10 @@ class Trainer(BaseTrainer):
             metric_funcs = self.metrics["train"]
 
         generated = self.generator(**batch)
-        for gen, target in zip(["generated_spectrogram", "generated_audio"], ["spectrogram", "target_audio"]):
+        for gen, target in zip(
+            ["generated_spectrogram", "generated_audio"],
+            ["spectrogram", "target_audio"],
+        ):
             T = batch[target].shape[-1]
             generated[gen] = generated[gen][..., :T]
         # generated_audio and generated_spectrogram
@@ -54,7 +57,7 @@ class Trainer(BaseTrainer):
             self.optimizer_d.step()
         batch.update(loss_msd)
         batch.update(loss_mpd)
-        batch['disc_loss'] = loss_disc
+        batch["disc_loss"] = loss_disc
         msd_res = self.msd(**batch)
         mpd_res = self.mpd(**batch)
         batch.update(msd_res)
@@ -80,7 +83,6 @@ class Trainer(BaseTrainer):
         for met in metric_funcs:
             metrics.update(met.name, met(**batch))
         return batch
-
 
     def _log_batch(self, batch_idx, batch, mode="train"):
         """
