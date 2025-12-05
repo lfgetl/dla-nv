@@ -21,7 +21,7 @@ class ExampleMetric(BaseMetric):
             device = "cuda" if torch.cuda.is_available() else "cpu"
         self.metric = metric.to(device)
 
-    def __call__(self, logits: torch.Tensor, labels: torch.Tensor, **kwargs):
+    def __call__(self, **kwargs):
         """
         Metric calculation logic.
 
@@ -31,5 +31,4 @@ class ExampleMetric(BaseMetric):
         Returns:
             metric (float): calculated metric.
         """
-        classes = logits.argmax(dim=-1)
-        return self.metric(classes, labels)
+        return 0

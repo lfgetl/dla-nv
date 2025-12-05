@@ -118,6 +118,8 @@ class MSD(nn.Module):
             res["msd_outputs_real"].append(output_real)
             res["features_msd_real"].append(feature_real)
 
+        return res
+
     def __str__(self):
         """
         Model prints with the number of parameters.

@@ -129,7 +129,9 @@ class BaseTrainer:
         self.metrics = metrics
         self.train_metrics = MetricTracker(
             *self.config.writer.loss_names,
-            "grad_norm",
+            "grad_norm_generator",
+            "grad_norm_mpd",
+            "grad_norm_msd",
             *[m.name for m in self.metrics["train"]],
             writer=self.writer,
         )
@@ -230,19 +232,25 @@ class BaseTrainer:
                 else:
                     raise e
             grad_norms = self._get_grad_norm()
-
-            self.train_metrics.update(grad_norms)
+            for k, v in grad_norms.items():
+                self.train_metrics.update(k, v)
 
             # log current results
             if batch_idx % self.log_step == 0:
                 self.writer.set_step((epoch - 1) * self.epoch_len + batch_idx)
                 self.logger.debug(
-                    "Train Epoch: {} {} Loss: {:.6f}".format(
-                        epoch, self._progress(batch_idx), batch["loss"].item()
+                    "Train Epoch: {} {} GenLoss: {:.6f} DiscLoss: {:.6f}".format(
+                        epoch,
+                        self._progress(batch_idx),
+                        batch["gen_loss"].item(),
+                        batch["disc_loss"].item(),
                     )
                 )
                 self.writer.add_scalar(
-                    "learning rate", self.lr_scheduler.get_last_lr()[0]
+                    "learning rate_g", self.lr_scheduler_g.get_last_lr()[0]
+                )
+                self.writer.add_scalar(
+                    "learning rate_d", self.lr_scheduler_d.get_last_lr()[0]
                 )
                 self._log_scalars(self.train_metrics)
                 self._log_batch(batch_idx, batch)
@@ -413,7 +421,7 @@ class BaseTrainer:
         """
         total_norms = {}
         for name, model in zip(
-            ["grad_norm_generator", "grad_norm_mpd, grad_norm_msd"],
+            ["grad_norm_generator", "grad_norm_mpd", "grad_norm_msd"],
             [self.generator, self.mpd, self.msd],
         ):
             parameters = model.parameters()

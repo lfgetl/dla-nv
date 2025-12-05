@@ -27,40 +27,41 @@ class Trainer(BaseTrainer):
                 the dataloader (possibly transformed via batch transform),
                 model outputs, and losses.
         """
-        batch = self.move_batch_to_device(batch)
+         batch = self.move_batch_to_device(batch)
         batch = self.transform_batch(batch)  # transform batch on device -- faster
 
         metric_funcs = self.metrics["inference"]
         if self.is_train:
             metric_funcs = self.metrics["train"]
 
-        generated = self.generator(**batch)  # generated_audio and generated_spectrogram
+        generated = self.generator(**batch)
+        for gen, target in zip(["generated_spectrogram", "generated_audio"], ["spectrogram", "target_audio"]):
+            T = batch[target].shape[-1]
+            generated[gen] = generated[gen][..., :T]
+        # generated_audio and generated_spectrogram
         gen_audio = generated["generated_audio"]
         mpd_res = self.mpd(generated_audio=gen_audio.detach(), **batch)
-        loss_mpd = self.dicriminator_loss(mpd_res, mpd=True)
+        batch.update(mpd_res)
+        loss_mpd = self.dicriminator_loss(mpd=True, **mpd_res)
         msd_res = self.msd(generated_audio=gen_audio.detach(), **batch)
-        loss_msd = self.dicriminator_loss(msd_res, mpd=False, **batch)
-        loss_disc = loss_mpd + loss_msd
+        batch.update(generated)
+        batch.update(msd_res)
+        loss_msd = self.dicriminator_loss(mpd=False, **msd_res)
+        loss_disc = loss_mpd["mpd_loss"] + loss_msd["msd_loss"]
         if self.is_train:
             self.optimizer_d.zero_grad()
             loss_disc.backward()
             self.optimizer_d.step()
-        for loss in loss_msd:
-            loss_msd[loss] = loss_msd[loss].detach().cpu().item()
         batch.update(loss_msd)
-        for loss in loss_mpd:
-            loss_mpd[loss] = loss_mpd[loss].detach().cpu().item()
         batch.update(loss_mpd)
-        msd_res = self.msd(generated_audio=gen_audio, **batch)
-        mpd_res = self.mpd(generated_audio=gen_audio, **batch)
-        total_res = {}
-        total_res.update(mpd_res)
-        total_res.update(msd_res)
-        total_res.update(generated)
-        for k in generated:
-            batch[k] = generated[k].detach()
+        batch['disc_loss'] = loss_disc
+        msd_res = self.msd(**batch)
+        mpd_res = self.mpd(**batch)
+        batch.update(msd_res)
+        batch.update(mpd_res)
 
-        loss_gen = self.generator_loss(**total_res)
+        loss_gen = self.generator_loss(**batch)
+        batch.update(loss_gen)
 
         if self.is_train:
             self.optimizer_g.zero_grad()
@@ -72,10 +73,6 @@ class Trainer(BaseTrainer):
             if self.lr_scheduler_g is not None:
                 self.lr_scheduler_g.step()
 
-        for loss in loss_gen:
-            loss_gen[loss] = loss_gen[loss].detach().cpu().item()
-        batch.update(loss_gen)
-
         # update metrics for each loss (in case of multiple losses)
         for loss_name in self.config.writer.loss_names:
             metrics.update(loss_name, batch[loss_name].item())
@@ -83,6 +80,7 @@ class Trainer(BaseTrainer):
         for met in metric_funcs:
             metrics.update(met.name, met(**batch))
         return batch
+
 
     def _log_batch(self, batch_idx, batch, mode="train"):
         """
@@ -103,7 +101,7 @@ class Trainer(BaseTrainer):
         if mode == "train":  # the method is called only every self.log_step steps
             self.log_spectrogram(**batch)
             self.writer.add_audio(
-                "generated_audio", batch["audio_generated"][0], sample_rate=22050
+                "generated_audio", batch["generated_audio"][0], sample_rate=22050
             )
             self.writer.add_audio(
                 "target_audio", batch["target_audio"][0], sample_rate=22050
@@ -112,7 +110,7 @@ class Trainer(BaseTrainer):
             # Log Stuff
             self.log_spectrogram(**batch)
             self.writer.add_audio(
-                "generated_audio", batch["audio_generated"][0], sample_rate=22050
+                "generated_audio", batch["generated_audio"][0], sample_rate=22050
             )
 
     def log_spectrogram(self, spectrogram, **batch):

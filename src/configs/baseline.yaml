@@ -35,15 +35,15 @@ generator_loss:
 discriminator_loss:
   _target_: src.loss.DiscriminatorLoss
 trainer:
-  log_step: 150
+  log_step: 500
   n_epochs: 100
-  epoch_len: 820
+  epoch_len: 3275
   device_tensors: ["spectrogram", "generated_spectrogram", "target_audio", "generated_audio", "features_mpd_real", "features_mpd_gen", "features_msd_real", "features_msd_gen", "msd_outputs_gen", "mpd_outputs_gen", "msd_outputs_real", "mpd_outputs_real"] # which tensors should be on device (ex. GPU)
   resume_from: null # null or path to the checkpoint dir with *.pth and config.yaml
   device: auto # device name or "auto"
   override: False # if True, will override the previous run with the same name
   monitor: "off" # "off" or "max/min metric_name", i.e. our goal is to maximize/minimize metric
-  save_period: 5 # checkpoint each save_period epochs in addition to the best epoch
+  save_period: 1 # checkpoint each save_period epochs in addition to the best epoch
   early_stop: ${trainer.n_epochs} # epochs for early stopping
   save_dir: "saved"
   seed: 1

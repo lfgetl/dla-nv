@@ -70,7 +70,7 @@ class MRF(nn.Module):
             dx = conv1(dx)
             dx = self.relu(dx)
             dx = conv2(dx)
-            x += dx
+            x = x + dx
         return x
 
 
@@ -133,7 +133,7 @@ class Generator(nn.Module):
                 if j == 0:
                     continue
                 res += mrf(x)
-        x /= len(self.k_u)
+        x = x / len(self.k_u)
         x = torch.tanh(self.conv_end(self.relu(x)))
         return {"generated_audio": x.squeeze(1), "generated_spectrogram": self.mel(x)}
 
