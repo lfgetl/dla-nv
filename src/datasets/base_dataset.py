@@ -21,7 +21,12 @@ class BaseDataset(Dataset):
     """
 
     def __init__(
-        self, index, limit=None, shuffle_index=False, instance_transforms=None
+        self,
+        index,
+        is_val=False,
+        limit=None,
+        shuffle_index=False,
+        instance_transforms=None,
     ):
         """
         Args:
@@ -42,8 +47,9 @@ class BaseDataset(Dataset):
         self._index: List[dict] = index
         self.mel_spectrogram = MelSpectrogram(MelSpectrogramConfig())
         self.target_sr = MelSpectrogramConfig().sr
-
+        self.len_segment = 11025
         self.instance_transforms = instance_transforms
+        self.is_val = is_val
 
     def __getitem__(self, ind):
         """
@@ -91,6 +97,14 @@ class BaseDataset(Dataset):
         target_sr = self.target_sr
         if sr != target_sr:
             audio_tensor = torchaudio.functional.resample(audio_tensor, sr, target_sr)
+        if not self.is_val:
+            T = audio_tensor.shape[-1]
+            if T < self.len_segment:
+                return audio_tensor
+            right = T - self.len_segment
+            start = random.randint(0, right)
+            return audio_tensor[..., start : start + self.len_segment]
+
         return audio_tensor
 
     def get_spectrogram(self, audio):

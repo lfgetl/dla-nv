@@ -40,7 +40,11 @@ class NVDataset(BaseDataset):
 
         with open(read_path, "r", newline="") as file:
             reader = csv.reader(file, delimiter="|", quoting=csv.QUOTE_NONE)
-            for row in tqdm(reader):
+            for i, row in enumerate(tqdm(reader)):
+                if part == "train" and i % 100 == 0:
+                    continue
+                if part == "val" and i % 100 != 0:
+                    continue
                 id, text, normalized_text = row
                 audio_path = str(dir_audio / (id + ".wav"))
 

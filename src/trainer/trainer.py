@@ -1,3 +1,6 @@
+import torch
+from torch.amp import autocast
+
 from src.logger.utils import plot_spectrogram
 from src.metrics.tracker import MetricTracker
 from src.trainer.base_trainer import BaseTrainer
@@ -33,48 +36,95 @@ class Trainer(BaseTrainer):
         metric_funcs = self.metrics["inference"]
         if self.is_train:
             metric_funcs = self.metrics["train"]
+        if self.amp:
+            with autocast("cuda", dtype=torch.float16):
+                generated = self.generator(**batch)
+                for gen, target in zip(
+                    ["generated_spectrogram", "generated_audio"],
+                    ["spectrogram", "target_audio"],
+                ):
+                    T = batch[target].shape[-1]
+                    generated[gen] = generated[gen][..., :T]
+                # generated_audio and generated_spectrogram
+                gen_audio = generated["generated_audio"]
+                mpd_res = self.mpd(generated_audio=gen_audio.detach(), **batch)
+                batch.update(mpd_res)
+                loss_mpd = self.dicriminator_loss(mpd=True, **mpd_res)
+                msd_res = self.msd(generated_audio=gen_audio.detach(), **batch)
+                batch.update(generated)
+                batch.update(msd_res)
+                loss_msd = self.dicriminator_loss(mpd=False, **msd_res)
+                loss_disc = loss_mpd["mpd_loss"] + loss_msd["msd_loss"]
+                if self.is_train:
+                    self.optimizer_d.zero_grad()
+                    self.scaler.scale(loss_disc).backward()
+                    self.scaler.unscale_(self.optimizer_d)
+                    self.scaler.step(self.optimizer_d)
+                    self.scaler.update()
+                batch.update(loss_msd)
+                batch.update(loss_mpd)
+                batch["disc_loss"] = loss_disc
+                msd_res = self.msd(**batch)
+                mpd_res = self.mpd(**batch)
+                batch.update(msd_res)
+                batch.update(mpd_res)
 
-        generated = self.generator(**batch)
-        for gen, target in zip(
-            ["generated_spectrogram", "generated_audio"],
-            ["spectrogram", "target_audio"],
-        ):
-            T = batch[target].shape[-1]
-            generated[gen] = generated[gen][..., :T]
-        # generated_audio and generated_spectrogram
-        gen_audio = generated["generated_audio"]
-        mpd_res = self.mpd(generated_audio=gen_audio.detach(), **batch)
-        batch.update(mpd_res)
-        loss_mpd = self.dicriminator_loss(mpd=True, **mpd_res)
-        msd_res = self.msd(generated_audio=gen_audio.detach(), **batch)
-        batch.update(generated)
-        batch.update(msd_res)
-        loss_msd = self.dicriminator_loss(mpd=False, **msd_res)
-        loss_disc = loss_mpd["mpd_loss"] + loss_msd["msd_loss"]
-        if self.is_train:
-            self.optimizer_d.zero_grad()
-            loss_disc.backward()
-            self.optimizer_d.step()
-        batch.update(loss_msd)
-        batch.update(loss_mpd)
-        batch["disc_loss"] = loss_disc
-        msd_res = self.msd(**batch)
-        mpd_res = self.mpd(**batch)
-        batch.update(msd_res)
-        batch.update(mpd_res)
+                loss_gen = self.generator_loss(**batch)
+                batch.update(loss_gen)
 
-        loss_gen = self.generator_loss(**batch)
-        batch.update(loss_gen)
+                if self.is_train:
+                    self.optimizer_g.zero_grad()
+                    self.scaler.scale(loss_gen["gen_loss"]).backward()
+                    self.scaler.unscale_(self.optimizer_g)
+                    self.scaler.step(self.optimizer_g)
+                    self.scaler.update()
+                    self._clip_grad_norm()
+                    if self.lr_scheduler_d is not None:
+                        self.lr_scheduler_d.step()
+                    if self.lr_scheduler_g is not None:
+                        self.lr_scheduler_g.step()
+        else:
+            generated = self.generator(**batch)
+            for gen, target in zip(
+                ["generated_spectrogram", "generated_audio"],
+                ["spectrogram", "target_audio"],
+            ):
+                T = batch[target].shape[-1]
+                generated[gen] = generated[gen][..., :T]
+            # generated_audio and generated_spectrogram
+            gen_audio = generated["generated_audio"]
+            mpd_res = self.mpd(generated_audio=gen_audio.detach(), **batch)
+            batch.update(mpd_res)
+            loss_mpd = self.dicriminator_loss(mpd=True, **mpd_res)
+            msd_res = self.msd(generated_audio=gen_audio.detach(), **batch)
+            batch.update(generated)
+            batch.update(msd_res)
+            loss_msd = self.dicriminator_loss(mpd=False, **msd_res)
+            loss_disc = loss_mpd["mpd_loss"] + loss_msd["msd_loss"]
+            if self.is_train:
+                self.optimizer_d.zero_grad()
+                loss_disc.backward()
+                self.optimizer_d.step()
+            batch.update(loss_msd)
+            batch.update(loss_mpd)
+            batch["disc_loss"] = loss_disc
+            msd_res = self.msd(**batch)
+            mpd_res = self.mpd(**batch)
+            batch.update(msd_res)
+            batch.update(mpd_res)
 
-        if self.is_train:
-            self.optimizer_g.zero_grad()
-            loss_gen["gen_loss"].backward()
-            self.optimizer_g.step()
-            self._clip_grad_norm()
-            if self.lr_scheduler_d is not None:
-                self.lr_scheduler_d.step()
-            if self.lr_scheduler_g is not None:
-                self.lr_scheduler_g.step()
+            loss_gen = self.generator_loss(**batch)
+            batch.update(loss_gen)
+
+            if self.is_train:
+                self.optimizer_g.zero_grad()
+                loss_gen["gen_loss"].backward()
+                self.optimizer_g.step()
+                self._clip_grad_norm()
+                if self.lr_scheduler_d is not None:
+                    self.lr_scheduler_d.step()
+                if self.lr_scheduler_g is not None:
+                    self.lr_scheduler_g.step()
 
         # update metrics for each loss (in case of multiple losses)
         for loss_name in self.config.writer.loss_names:
@@ -113,6 +163,9 @@ class Trainer(BaseTrainer):
             self.log_spectrogram(**batch)
             self.writer.add_audio(
                 "generated_audio", batch["generated_audio"][0], sample_rate=22050
+            )
+            self.writer.add_audio(
+                "target_audio", batch["target_audio"][0], sample_rate=22050
             )
 
     def log_spectrogram(self, spectrogram, **batch):

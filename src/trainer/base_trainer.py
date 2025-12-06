@@ -154,6 +154,11 @@ class BaseTrainer:
         if config.trainer.get("from_pretrained") is not None:
             self._from_pretrained(config.trainer.get("from_pretrained"))
 
+        self.amp = config.trainer.get("amp", False)
+        if self.amp:
+            self.amp = True
+            self.scaler = torch.cuda.amp.GradScaler()
+
     def train(self):
         """
         Wrapper around training process to save model on keyboard interrupt.
