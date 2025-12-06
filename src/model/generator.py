@@ -135,7 +135,10 @@ class Generator(nn.Module):
                 res += mrf(x)
         x = x / len(self.k_u)
         x = torch.tanh(self.conv_end(self.relu(x)))
-        return {"generated_audio": x.squeeze(1), "generated_spectrogram": self.mel(x)}
+        return {
+            "generated_audio": x.squeeze(1),
+            "generated_spectrogram": self.mel(x).squeeze(1),
+        }
 
     def __str__(self):
         """
