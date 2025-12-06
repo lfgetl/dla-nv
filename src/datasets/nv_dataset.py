@@ -13,7 +13,7 @@ from src.utils.io_utils import ROOT_PATH
 class NVDataset(BaseDataset):
     def __init__(self, part, data_dir=None, *args, **kwargs):
         if data_dir is None:
-            data_dir = ROOT_PATH / "data" / "datasets" / "ljspeech"
+            data_dir = ROOT_PATH / "data" / "datasets" / "LJSpeech-1.1"
             data_dir.mkdir(exist_ok=True, parents=True)
         self._data_dir = data_dir
 
@@ -35,7 +35,7 @@ class NVDataset(BaseDataset):
     def _create_index(self, part):  #
         index = []
         dir_part = self._data_dir
-        read_path = dir_part / (part + ".csv")
+        read_path = dir_part / "metadata.csv"
         dir_audio = dir_part / "wavs"
 
         with open(read_path, "r", newline="") as file:

@@ -37,7 +37,7 @@ discriminator_loss:
 trainer:
   log_step: 250
   n_epochs: 100
-  epoch_len: 3275
+  epoch_len: 820
   device_tensors: ["spectrogram", "generated_spectrogram", "target_audio", "generated_audio", "features_mpd_real", "features_mpd_gen", "features_msd_real", "features_msd_gen", "msd_outputs_gen", "mpd_outputs_gen", "msd_outputs_real", "mpd_outputs_real"] # which tensors should be on device (ex. GPU)
   resume_from: null # null or path to the checkpoint dir with *.pth and config.yaml
   device: auto # device name or "auto"
