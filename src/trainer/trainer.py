@@ -168,7 +168,10 @@ class Trainer(BaseTrainer):
                 "target_audio", batch["target_audio"][0], sample_rate=22050
             )
 
-    def log_spectrogram(self, spectrogram, **batch):
+    def log_spectrogram(self, spectrogram, generated_spectrogram, **batch):
         spectrogram_for_plot = spectrogram[0].detach().cpu()
         image = plot_spectrogram(spectrogram_for_plot)
         self.writer.add_image("spectrogram", image)
+        t_spectrogram_for_plot = generated_spectrogram[0].detach().cpu()
+        image = plot_spectrogram(t_spectrogram_for_plot)
+        self.writer.add_image("target_spectrogram", image)
