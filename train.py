@@ -31,6 +31,7 @@ def main(config):
 
     if config.trainer.device == "auto":
         device = "cuda" if torch.cuda.is_available() else "cpu"
+        torch.backends.cudnn.benchmark = True
     else:
         device = config.trainer.device
 
