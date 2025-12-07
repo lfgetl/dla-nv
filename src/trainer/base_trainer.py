@@ -554,7 +554,7 @@ class BaseTrainer:
         #    )
         self.generator.load_state_dict(checkpoint["state_dict_g"])
         self.mpd.load_state_dict(checkpoint["state_dict_mpd"])
-        self.msd.load_state_dict(checkpoint["state_dcit_msd"])
+        self.msd.load_state_dict(checkpoint["state_dict_msd"])
 
         # load optimizer state from checkpoint only when optimizer type is not changed.
         if (
