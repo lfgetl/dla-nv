@@ -592,11 +592,13 @@ class BaseTrainer:
             self.logger.info(f"Loading model weights from: {pretrained_path} ...")
         else:
             print(f"Loading model weights from: {pretrained_path} ...")
-        checkpoint = torch.load(pretrained_path, self.device)
+        checkpoint = torch.load(pretrained_path, self.device, weights_only=False)
 
         if checkpoint.get("state_dict_g") is not None:
             self.generator.load_state_dict(checkpoint["state_dict_g"])
-            self.mpd.load_state_dict(checkpoint["state_dict_mpd"])
-            self.msd.load_state_dict(checkpoint["state_dict_msd"])
+            if self.mpd is not None:
+                self.mpd.load_state_dict(checkpoint["state_dict_mpd"])
+            if self.msd is not None:
+                self.msd.load_state_dict(checkpoint["state_dict_msd"])
         else:
             self.model.load_state_dict(checkpoint)

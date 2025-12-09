@@ -17,22 +17,10 @@ from src.utils.io_utils import ROOT_PATH
 class CustomDirDataset(BaseDataset):
     def __init__(self, data_dir, is_audio=False, *args, **kwargs):
         self._data_dir = Path(data_dir)
-
-        index = self._get_or_load_index()
         self.is_audio = is_audio
+        index = self._create_index()
 
         super().__init__(index, *args, **kwargs)
-
-    def _get_or_load_index(self, part):
-        index_path = self._data_dir / f"{part}_index.json"
-        if index_path.exists():
-            with index_path.open() as f:
-                index = json.load(f)
-        else:
-            index = self._create_index(part)
-            with index_path.open("w") as f:
-                json.dump(index, f, indent=2)
-        return index
 
     def _create_index(self):  #
         index = []
@@ -67,7 +55,7 @@ class CustomDirDataset(BaseDataset):
                         {
                             "file_id": str(path).split("/")[-1].split(".")[0],
                             "audio_path": "",
-                            "spectrogram": spectrogram,
+                            "spectrogram": spectrogram.to("cpu"),
                         }
                     )
 

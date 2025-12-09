@@ -23,8 +23,6 @@ class Inferencer(BaseTrainer):
     def __init__(
         self,
         generator,
-        mpd,
-        msd,
         config,
         device,
         dataloaders,
@@ -65,8 +63,8 @@ class Inferencer(BaseTrainer):
         self.device = device
 
         self.generator = generator
-        self.mpd = mpd
-        self.msd = msd
+        self.msd = None
+        self.mpd = None
 
         self.sr = MelSpectrogramConfig().sr
 
@@ -148,7 +146,7 @@ class Inferencer(BaseTrainer):
         for i in range(batch_size):
             # clone because of
             # https://github.com/pytorch/pytorch/issues/1995
-            generated_audio = batch["generated_audio"][i].clone()
+            generated_audio = batch["generated_audio"][i].clone().to("cpu")
             generated_spectrogram = batch["generated_spectrogram"][i].clone()
             filename = batch["file_id"][i]
             if self.save_path is not None:

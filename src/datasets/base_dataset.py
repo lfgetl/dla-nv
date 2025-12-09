@@ -66,13 +66,6 @@ class BaseDataset(Dataset):
             instance_data (dict): dict, containing instance
                 (a single dataset element).
         """
-        data_dict = self._index[ind]
-        (
-            file_id,
-            audio_path,
-            text,
-            normalized_text,
-        ) = data_dict.values()
         file_id = self._index[ind]["file_id"]
         audio_path = self._index[ind]["audio_path"]
         spectrogram = None
@@ -192,7 +185,6 @@ class BaseDataset(Dataset):
             assert "audio_path" in entry, (
                 "Each dataset item should include field 'path'" " - path to audio file."
             )
-            assert "text" in entry, "Each dataset item should include field 'text'"
 
     @staticmethod
     def _sort_index(index):

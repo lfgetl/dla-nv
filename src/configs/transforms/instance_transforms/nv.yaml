@@ -2,3 +2,5 @@ train:
   get_spectrogram:
 val:
   get_spectrogram:
+test:
+  get_spectrogram:

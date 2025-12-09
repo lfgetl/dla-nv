@@ -1,6 +1,6 @@
 torch==2.9.1
-torchvision==0.17.0
-torchaudio==2.2.0
+torchvision
+torchaudio
 torchmetrics
 thop
 numpy==1.26.4
@@ -15,8 +15,19 @@ comet_ml
 jsonschema
 soundfile
 hydra-core
-nemo_toolkit['tts']
-
+nemo_toolkit==1.23.0
+nemo_text_processing
+lightning
+fiddle
+transformers==4.40.0
+huggingface_hub==0.22.0
+youtokentome
+lhotse
+pyannote.core
+pyannote.metrics
+webdataset
+jiwer>=3.1.0,<4.0.0
+torchcodec
 
 black
 isort
