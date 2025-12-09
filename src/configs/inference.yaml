@@ -1,9 +1,11 @@
 defaults:
-  - model: baseline
+  - generator: generator
+  - mpd: mpd
+  - msd: msd
   - metrics: example
   - datasets: example_eval # we do not want to run inference on training data
-  - dataloader: example
-  - transforms: example
+  - dataloader: nv
+  - transforms: nv
   - _self_
 inferencer:
   device_tensors: ["data_object", "labels"] # which tensors should be on device (ex. GPU)

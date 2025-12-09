@@ -73,14 +73,20 @@ class BaseDataset(Dataset):
             text,
             normalized_text,
         ) = data_dict.values()
-        target_audio = self.load_audio(audio_path)
+        file_id = self._index[ind]["file_id"]
+        audio_path = self._index[ind]["audio_path"]
+        spectrogram = None
+        if audio_path != "":
+            target_audio = self.load_audio(audio_path)
+        else:
+            spectrogram = self._index[ind]["spectrogram"]
 
         instance_data = {
             "target_audio": target_audio,
-            "text": text,
-            "normalized_text": normalized_text,
             "file_id": file_id,
         }
+        if spectrogram is not None:
+            instance_data["spectrogram"] = spectrogram
         instance_data = self.preprocess_data(instance_data)
 
         return instance_data
@@ -136,9 +142,10 @@ class BaseDataset(Dataset):
         if self.instance_transforms is not None:
             for transform_name in self.instance_transforms.keys():
                 if transform_name == "get_spectrogram":
-                    instance_data["spectrogram"] = self.get_spectrogram(
-                        instance_data["target_audio"]
-                    )
+                    if "spectrogram" not in instance_data:
+                        instance_data["spectrogram"] = self.get_spectrogram(
+                            instance_data["target_audio"]
+                        )
                 if transform_name == "audio":
                     instance_data["target_audio"] = self.instance_transforms["audio"](
                         instance_data["target_audio"]

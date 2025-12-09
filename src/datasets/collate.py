@@ -27,7 +27,7 @@ def collate_fn(dataset_items: list[dict]):
             [elem["target_audio"].squeeze(0) for elem in dataset_items],
             batch_first=True,
         )
-    for field in ["file_id", "normalized_text"]:  # keep the text for some future reason
+    for field in ["file_id"]:  # keep the text for some future reason
         result_batch[field] = [elem[field] for elem in dataset_items]
 
     return result_batch

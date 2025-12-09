@@ -1,7 +1,13 @@
+from pathlib import Path
+
 import torch
+import torchaudio
+from torchvision.utils import save_image
 from tqdm.auto import tqdm
 
+from src.logger.utils import plot_spectrogram
 from src.metrics.tracker import MetricTracker
+from src.model.mel_spectrogram import MelSpectrogramConfig
 from src.trainer.base_trainer import BaseTrainer
 
 
@@ -16,7 +22,9 @@ class Inferencer(BaseTrainer):
 
     def __init__(
         self,
-        model,
+        generator,
+        mpd,
+        msd,
         config,
         device,
         dataloaders,
@@ -56,7 +64,12 @@ class Inferencer(BaseTrainer):
 
         self.device = device
 
-        self.model = model
+        self.generator = generator
+        self.mpd = mpd
+        self.msd = msd
+
+        self.sr = MelSpectrogramConfig().sr
+
         self.batch_transforms = batch_transforms
 
         # define dataloaders
@@ -119,8 +132,8 @@ class Inferencer(BaseTrainer):
         batch = self.move_batch_to_device(batch)
         batch = self.transform_batch(batch)  # transform batch on device -- faster
 
-        outputs = self.model(**batch)
-        batch.update(outputs)
+        results = self.generator(**batch)
+        batch.update(results)
 
         if metrics is not None:
             for met in self.metrics["inference"]:
@@ -129,26 +142,25 @@ class Inferencer(BaseTrainer):
         # Some saving logic. This is an example
         # Use if you need to save predictions on disk
 
-        batch_size = batch["logits"].shape[0]
-        current_id = batch_idx * batch_size
-
+        batch_size = batch["generated_audio"].shape[0]
+        if self.save_path is not None:
+            (self.save_path / part).mkdir(exist_ok=True, parents=True)
         for i in range(batch_size):
             # clone because of
             # https://github.com/pytorch/pytorch/issues/1995
-            logits = batch["logits"][i].clone()
-            label = batch["labels"][i].clone()
-            pred_label = logits.argmax(dim=-1)
-
-            output_id = current_id + i
-
-            output = {
-                "pred_label": pred_label,
-                "label": label,
-            }
-
+            generated_audio = batch["generated_audio"][i].clone()
+            generated_spectrogram = batch["generated_spectrogram"][i].clone()
+            filename = batch["file_id"][i]
             if self.save_path is not None:
-                # you can use safetensors or other lib here
-                torch.save(output, self.save_path / part / f"output_{output_id}.pth")
+                torchaudio.save(
+                    self.save_path / part / (filename + ".wav"),
+                    generated_audio,
+                    self.sr,
+                )
+                save_image(
+                    plot_spectrogram(generated_spectrogram, filename),
+                    str(self.save_path / part / (filename + ".png")),
+                )
 
         return batch
 
@@ -164,7 +176,7 @@ class Inferencer(BaseTrainer):
         """
 
         self.is_train = False
-        self.model.eval()
+        self.generator.eval()
 
         self.evaluation_metrics.reset()
 

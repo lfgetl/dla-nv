@@ -52,8 +52,6 @@ class NVDataset(BaseDataset):
                     {
                         "file_id": id,
                         "audio_path": audio_path,
-                        "text": text,
-                        "normalized_text": normalized_text,
                     }
                 )
         return index

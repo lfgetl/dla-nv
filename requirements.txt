@@ -1,4 +1,4 @@
-torch==2.2.0
+torch==2.9.1
 torchvision==0.17.0
 torchaudio==2.2.0
 torchmetrics
@@ -15,6 +15,7 @@ comet_ml
 jsonschema
 soundfile
 hydra-core
+nemo_toolkit['tts']
 
 
 black
