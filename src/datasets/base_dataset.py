@@ -79,14 +79,16 @@ class BaseDataset(Dataset):
         if audio_path != "":
             target_audio = self.load_audio(audio_path)
         else:
+            target_audio = None
             spectrogram = self._index[ind]["spectrogram"]
 
         instance_data = {
-            "target_audio": target_audio,
             "file_id": file_id,
         }
         if spectrogram is not None:
             instance_data["spectrogram"] = spectrogram
+        if target_audio is not None:
+            instance_data["target_audio"] = target_audio
         instance_data = self.preprocess_data(instance_data)
 
         return instance_data

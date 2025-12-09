@@ -3,13 +3,13 @@ defaults:
   - mpd: mpd
   - msd: msd
   - metrics: example
-  - datasets: example_eval # we do not want to run inference on training data
-  - dataloader: nv
+  - datasets: custom_dir # we do not want to run inference on training data
+  - dataloader: inference
   - transforms: nv
   - _self_
 inferencer:
-  device_tensors: ["data_object", "labels"] # which tensors should be on device (ex. GPU)
+  device_tensors: ["spectrogram"] # which tensors should be on device (ex. GPU)
   device: auto # device name or "auto"
-  save_path: "example" # any name here, can be a dataset name
+  save_path: "vocoder_generated" # any name here, can be a dataset name
   seed: 1
-  from_pretrained: "saved/model_best.pth" # path to the pretrained model
+  from_pretrained: "models/vocoder_V1/checkpoint.pth" # path to the pretrained model

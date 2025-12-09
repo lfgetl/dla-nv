@@ -1,0 +1,4 @@
+test:
+  _target_: src.datasets.CustomDirDataset
+  data_dir: "datasets/test"
+  instance_transforms: ${transforms.instance_transforms.train}
