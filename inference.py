@@ -1,4 +1,7 @@
+import os
+import sys
 import warnings
+from pathlib import Path
 
 import hydra
 import torch
@@ -13,7 +16,7 @@ warnings.filterwarnings("ignore", category=UserWarning)
 
 
 @hydra.main(version_base=None, config_path="src/configs", config_name="inference")
-def main(config):
+def main(config, args):
     """
     Main script for inference. Instantiates the model, metrics, and
     dataloaders. Runs Inferencer to calculate metrics and (or)
@@ -22,6 +25,13 @@ def main(config):
     Args:
         config (DictConfig): hydra experiment config.
     """
+    if not args.empty():
+        text = args[1]
+        config.datasets.data_dir = "datasets/tmp"
+        tmp_path = Path("datasets/tmp")
+        tmp_path.mkdir(exist_ok=True, parents=True)
+        with open("input.txt", "w") as f:
+            f.write(text)
     set_random_seed(config.inferencer.seed)
 
     if config.inferencer.device == "auto":
@@ -64,4 +74,4 @@ def main(config):
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])

@@ -64,6 +64,11 @@ Installation may depend on your task. The general steps are the following:
    ```bash
    pre-commit install
    ```
+3. Install files for preprocessing
+   ```bash
+   wget https://raw.githubusercontent.com/NVIDIA/NeMo/263a30be71e859cee330e5925332009da3e5efbc/scripts/tts_dataset_files/heteronyms-052722 -qO heteronyms
+   wget https://raw.githubusercontent.com/NVIDIA/NeMo/263a30be71e859cee330e5925332009da3e5efbc/scripts/tts_dataset_files/cmudict-0.7b_nv22.08-qOcmudict-0.7b
+   ```
 
 ## How To Use
 
