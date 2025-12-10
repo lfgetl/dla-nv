@@ -6,11 +6,9 @@ from pathlib import Path
 import numpy as np
 import torch
 import torchaudio
-from nemo.collections.tts.models import FastPitchModel
 from tqdm.auto import tqdm
 
 from src.datasets.base_dataset import BaseDataset
-from src.model.mel_spectrogram import MelSpectrogramConfig
 from src.utils.io_utils import ROOT_PATH
 
 
@@ -26,11 +24,16 @@ class CustomDirDataset(BaseDataset):
         index = []
         if not self.is_audio:
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            self.spec = (
-                FastPitchModel.from_pretrained("nvidia/tts_en_fastpitch")
-                .eval()
-                .to(device)
+            fastpitch, _ = torch.hub.load(
+                "NVIDIA/DeepLearningExamples:torchhub", "nvidia_fastpitch"
             )
+            self.tp = torch.hub.load(
+                "NVIDIA/DeepLearningExamples:torchhub",
+                "nvidia_textprocessing_utils",
+                cmudict_path="cmudict-0.7b",
+                heteronyms_path="heteronyms",
+            )
+            self.spec = fastpitch.eval().to(device)
 
         for path in Path(self._data_dir).iterdir():
             if self.is_audio:
@@ -49,13 +52,13 @@ class CustomDirDataset(BaseDataset):
                 text = f.read()
                 f.close()
                 with torch.no_grad():
-                    parsed = self.spec.parse(text, normalize=True)
-                    spectrogram = self.spec.generate_spectrogram(parsed)
+                    batch = self.tp.prepare_input_sequence([text], batch_size=1)[0]
+                    mel, mel_lens, *_ = self.spec(batch["text"].to(device))
                     index.append(
                         {
                             "file_id": str(path).split("/")[-1].split(".")[0],
                             "audio_path": "",
-                            "spectrogram": spectrogram.to("cpu"),
+                            "spectrogram": mel[0].detach().to("cpu"),
                         }
                     )
 
