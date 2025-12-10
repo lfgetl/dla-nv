@@ -25,7 +25,8 @@ def main(config):
     Args:
         config (DictConfig): hydra experiment config.
     """
-    if config.inferencer.text is not None:
+    text = config.inferencer.get("text", None)
+    if text is not None:
         text = config.inferencer.text
         config.datasets.test.data_dir = "data/datasets/tmp"
         tmp_path = Path("data/datasets/tmp")

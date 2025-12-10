@@ -6,7 +6,6 @@ defaults:
   - datasets: custom_dir # we do not want to run inference on training data
   - dataloader: inference
   - transforms: nv
-  - text: None
   - _self_
 inferencer:
   device_tensors: ["spectrogram"] # which tensors should be on device (ex. GPU)
