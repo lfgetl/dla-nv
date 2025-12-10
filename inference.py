@@ -16,7 +16,7 @@ warnings.filterwarnings("ignore", category=UserWarning)
 
 
 @hydra.main(version_base=None, config_path="src/configs", config_name="inference")
-def main(config, args):
+def main(config):
     """
     Main script for inference. Instantiates the model, metrics, and
     dataloaders. Runs Inferencer to calculate metrics and (or)
@@ -25,12 +25,12 @@ def main(config, args):
     Args:
         config (DictConfig): hydra experiment config.
     """
-    if not args.empty():
-        text = args[1]
-        config.datasets.data_dir = "datasets/tmp"
-        tmp_path = Path("datasets/tmp")
+    if config.inferencer.text is not None:
+        text = config.inferencer.text
+        config.datasets.test.data_dir = "data/datasets/tmp"
+        tmp_path = Path("data/datasets/tmp")
         tmp_path.mkdir(exist_ok=True, parents=True)
-        with open("input.txt", "w") as f:
+        with open(tmp_path / "input.txt", "w") as f:
             f.write(text)
     set_random_seed(config.inferencer.seed)
 
@@ -74,4 +74,4 @@ def main(config, args):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    main()
