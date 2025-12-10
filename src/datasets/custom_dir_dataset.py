@@ -58,7 +58,7 @@ class CustomDirDataset(BaseDataset):
                         {
                             "file_id": str(path).split("/")[-1].split(".")[0],
                             "audio_path": "",
-                            "spectrogram": mel[0].detach().to("cpu"),
+                            "spectrogram": mel.detach().to("cpu"),
                         }
                     )
 

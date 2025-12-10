@@ -19,6 +19,7 @@ librosa
 scipy
 unidecode
 inflect
+torchcodec
 
 
 black
